@@ -58,7 +58,7 @@ pos_z=zeros(n,1);
 %R = [-sin(lat)*cos(long), -sin(lat)*sin(long), cos(lat); -sin(long), cos(long),0;cos(lat)*cos(long), cos(lat)*sin(long), sin(lat)];
 
 % define max number of iterations 
-n_iter = 7;
+n_iter = 1;
 
 % define condition 
 cond = 'All corrections'; 
@@ -74,16 +74,16 @@ cond = 'All corrections';
 
 %switches for different corrections. For all apart from 'clock', keep as
 %'y' to include correction or change to anything else to remove (i.e 'n')
-% for the clock option choose 'rel' for the relativistic correction,
-% 'non_rel' for standard clock correction, or any other letter (i.e 'n')
+% for the clock option choose 'r' for the relativistic correction,
+% 'c' for standard clock correction, or any other letter (i.e 'n')
 % for no clock correction at all 
 
 ion='y';
-biases='y';
+biases='n';
 tropo='y';
 rot='y';
 light='y';
-clock='n';
+clock='r';
 
 
 
@@ -94,6 +94,7 @@ for i = 1:n
 
     % define receiver clock correction 
     del_t_r = 0;
+    rece_corr = 0;
     % initilize iteration 
     iter = 1; 
     
@@ -109,7 +110,7 @@ for i = 1:n
         
         % update initial condition
         
-        rece_corr = del_t_r + del_p(4);
+        %rece_corr = del_t_r + del_p(4);
        
         
  
@@ -205,12 +206,12 @@ for i = 1:n
         PC = (f1^2*GARM_C1(i,:) - f2^2*GARM_P2(i,:))./(f1^2 - f2^2);
         
         % 7. bias 
-        bias = -f2^2/(f1^2 - f2^2)*P1P2 - P1C1;
-        PC_bias = - f1^2/(f1^2 - f2^2)*P1C1;
+        bias = -(f2.^2)/(f1.^2 - f2.^2)*P1P2 - P1C1;
+        PC_bias = - f1.^2/(f1.^2 - f2.^2)*P1C1;
         
         %use/don't use sagnac correction
         
-        if rot=='y'
+        if rot == 'y'
             p = p_corr0+c*rece_corr;
         else 
             p=p_raw+c*rece_corr;
@@ -219,23 +220,29 @@ for i = 1:n
         
         %biases
             
-        if biases=='y'
-            p=p+PC_bias;
+        if biases =='y' && ion == 'y'
+            p=p + PC_bias;
+        elseif biases == 'y' && ion == 'n'
+            p = p + bias;
+        elseif biases == 'n'
+           
         end
             
         %troposphere correction
         
-        if tropo=='y'
+        if tropo =='y'
             p=p+T;
+        else
+           
         end 
         
         %relativistic correction, clock correction, or no clock correction
         
-        if clock =='rel'
+        if clock == 'r'
             p=p-c.*sate_rel_corr;
             
-        elseif clock =='non_rel'
-            p=p-c.*Sat_clk(i,:);
+        elseif clock == 'c'
+            p=p-c.* Sat_clk(i,:);
             
         else 
             %do nothing
@@ -354,7 +361,7 @@ for i = 1:n
           
             iter = iter + 1;  
             
-            if(((abs(del_p(1)) <= sigma_p(1)/1000000 && abs(del_p(2)) <= sigma_p(2)/1000000 && abs(del_p(3)/1000000 <= sigma_p(3))) && abs(del_p(4)/1000000 <= sigma_p(4)) || iter>=n_iter))
+            if ( ((abs(del_p(1)) <= sigma_p(1)/1e3 && abs(del_p(2)) <= sigma_p(2)/1e3 && abs(del_p(3)) <= sigma_p(3)/1e3 && abs(del_p(4)) <= sigma_p(4)/1e3)) || iter>=n_iter)
                 break; 
             end
         
@@ -364,22 +371,26 @@ for i = 1:n
     %lat = 2*atan(yr_G/(sqrt(xr_G^2 + yr_G^2) + xr_G));
     %R = [-sin(lat)*cos(long), -sin(lat)*sin(long), cos(lat); -sin(long), cos(long),0;cos(lat)*cos(long), cos(lat)*sin(long), sin(lat)];
     
+    long = 11.083379;
+    lat = 47.303331;
+    R = [-sind(lat)*cosd(long), -sind(lat)*sind(long), cosd(lat); -sind(long), cosd(long),0; cosd(lat)*cosd(long), cosd(lat)*sind(long), sind(lat)];
+    
     % Crop out the time part, and do transformation for station
     % coordinates
-    %A_new = A(:,1:3);
-    %Q_new = inv(A_new'*A_new);
-    %Q_new_trans = R*Q_new*R';
+    A_new = A(:,1:3);
+    Q_new = inv(A_new'*A_new);
+    Q_new_trans = R*Q_new*R';
     
     % Transforming station coordiantes
-    %del_p_sta = R*del_p(1:3);
+    del_p_sta = R*del_p(1:3);
     
     
-    %for j = 1:3
-    %    sigma_p(1,j) = m0_p*sqrt(Q_new_trans(j,j));
-    %end
+    for j = 1:3
+        sigma_p(1,j) = m0_p*sqrt(Q_new_trans(j,j));
+    end
     % Storing results 
-    %del_p_mat(i,:) = [del_p_sta', del_p(4)];
-    del_p_mat(i,:) = del_p;
+    del_p_mat(i,:) = [del_p_sta', del_p(4)];
+    %del_p_mat(i,:) = del_p;
     sigma_p_mat(i,:) = sigma_p;
     
     pos_x(i)=xr_G;
