@@ -132,6 +132,7 @@ for i = 1:n
 
     % define receiver clock correction 
     del_t_r = 0;
+    rece_corr = del_t_r + del_p(4);
     % initilize iteration 
     iter = 1; 
     
@@ -161,7 +162,7 @@ for i = 1:n
         
         % update initial condition
         
-        rece_corr = del_t_r + del_p(4);
+        %rece_corr = del_t_r + del_p(4);
        
         
  
@@ -271,8 +272,12 @@ for i = 1:n
         
         %biases
             
-        if biases=='y'
-            p=p+PC_bias;
+        if biases =='y' && ion == 'y'
+            p=p + PC_bias;
+        elseif biases == 'y' && ion == 'n'
+            p = p + bias;
+        elseif biases == 'n'
+           
         end
             
         %troposphere correction
@@ -375,23 +380,26 @@ for i = 1:n
     %long = atan(zr_G/6371000);
     %lat = 2*atan(yr_G/(sqrt(xr_G^2 + yr_G^2) + xr_G));
     %R = [-sin(lat)*cos(long), -sin(lat)*sin(long), cos(lat); -sin(long), cos(long),0;cos(lat)*cos(long), cos(lat)*sin(long), sin(lat)];
+    long = 11.083379;
+    lat = 47.303331;
+    R = [-sind(lat)*cosd(long), -sind(lat)*sind(long), cosd(lat); -sind(long), cosd(long),0; cosd(lat)*cosd(long), cosd(lat)*sind(long), sind(lat)];
     
     % Crop out the time part, and do transformation for station
     % coordinates
-    %A_new = A(:,1:3);
-    %Q_new = inv(A_new'*A_new);
-    %Q_new_trans = R*Q_new*R';
+    A_new = A(:,1:3);
+    Q_new = inv(A_new'*A_new);
+    Q_new_trans = R*Q_new*R';
     
     % Transforming station coordiantes
-    %del_p_sta = R*del_p(1:3);
+    del_p_sta = R*del_p(1:3);
     
     
-    %for j = 1:3
-    %    sigma_p(1,j) = m0_p*sqrt(Q_new_trans(j,j));
-    %end
+    for j = 1:3
+        sigma_p(1,j) = m0_p*sqrt(Q_new_trans(j,j));
+    end
     % Storing results 
-    %del_p_mat(i,:) = [del_p_sta', del_p(4)];
-    del_p_mat(i,:) = del_p;
+    del_p_mat(i,:) = [del_p_sta', del_p(4)];
+    %del_p_mat(i,:) = del_p;
     sigma_p_mat(i,:) = sigma_p;
     
     pos_x(i)=xr_G;
